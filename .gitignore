@@ -31,5 +31,8 @@ Thumbs.db
 *.docx
 *.doc
 
+# Icon generator (dev only)
+generate-icon.js
+
 # Junk directories
 {src

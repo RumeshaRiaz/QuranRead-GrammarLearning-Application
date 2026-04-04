@@ -6,15 +6,15 @@ import {
   Animated,
   TouchableOpacity,
   StatusBar,
-  Dimensions,
   Easing,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import LogoSVG from '../components/LogoSVG';
 
-const { height } = Dimensions.get('window');
-
 export default function SplashScreen({ navigation }) {
+  const { width, height } = useWindowDimensions();
+
   const logoFade  = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.80)).current;
   const textFade  = useRef(new Animated.Value(0)).current;
@@ -23,72 +23,45 @@ export default function SplashScreen({ navigation }) {
   const btnScale  = useRef(new Animated.Value(0.85)).current;
   const pulseBtn  = useRef(new Animated.Value(1)).current;
 
+  /* Responsive sizes */
+  const logoSize   = Math.min(width * 0.58, 240);
+  const glowSize   = logoSize * 1.25;
+  const arabicSize = Math.min(width * 0.11, 44);
+  const engSize    = Math.min(width * 0.036, 14);
+  const tagSize    = Math.min(width * 0.031, 12);
+
   useEffect(() => {
-    // 1 – logo
     Animated.parallel([
       Animated.timing(logoFade, {
-        toValue: 1,
-        duration: 1000,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
+        toValue: 1, duration: 1000,
+        easing: Easing.out(Easing.ease), useNativeDriver: true,
       }),
       Animated.spring(logoScale, {
-        toValue: 1,
-        friction: 7,
-        tension: 45,
-        useNativeDriver: true,
+        toValue: 1, friction: 7, tension: 45, useNativeDriver: true,
       }),
     ]).start();
 
-    // 2 – text (delayed)
     setTimeout(() => {
       Animated.parallel([
-        Animated.timing(textFade, {
-          toValue: 1,
-          duration: 650,
-          useNativeDriver: true,
-        }),
+        Animated.timing(textFade,  { toValue: 1, duration: 650, useNativeDriver: true }),
         Animated.timing(textSlide, {
-          toValue: 0,
-          duration: 650,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          toValue: 0, duration: 650,
+          easing: Easing.out(Easing.cubic), useNativeDriver: true,
         }),
       ]).start();
     }, 550);
 
-    // 3 – button (delayed more)
     setTimeout(() => {
       Animated.parallel([
-        Animated.timing(btnFade, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.spring(btnScale, {
-          toValue: 1,
-          friction: 6,
-          tension: 50,
-          useNativeDriver: true,
-        }),
+        Animated.timing(btnFade,  { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.spring(btnScale, { toValue: 1, friction: 6, tension: 50, useNativeDriver: true }),
       ]).start();
 
-      // gentle pulse on border after it appears
       setTimeout(() => {
         Animated.loop(
           Animated.sequence([
-            Animated.timing(pulseBtn, {
-              toValue: 1.04,
-              duration: 1400,
-              easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseBtn, {
-              toValue: 1,
-              duration: 1400,
-              easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
-            }),
+            Animated.timing(pulseBtn, { toValue: 1.04, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+            Animated.timing(pulseBtn, { toValue: 1,    duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
           ])
         ).start();
       }, 700);
@@ -99,33 +72,24 @@ export default function SplashScreen({ navigation }) {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#0C1520" />
 
-      {/* Corner brackets – decorative */}
+      {/* Corner brackets */}
       <View style={[styles.corner, styles.cTL]} />
       <View style={[styles.corner, styles.cTR]} />
       <View style={[styles.corner, styles.cBL]} />
       <View style={[styles.corner, styles.cBR]} />
 
-      {/* Warm radial tint behind logo */}
-      <View style={styles.bgGlow} />
-
-      {/*
-       * ── Layout ──
-       * |  topSpacer (flex 1.2)  |
-       * |  logo                  |
-       * |  text                  |
-       * |  midSpacer (flex 1)    |
-       * |  button + safePad      |
-       */}
-
       <View style={styles.topSpacer} />
 
-      {/* Logo */}
+      {/* Logo — bgGlow lives INSIDE this container so it always centers on the logo */}
       <Animated.View style={{
         opacity: logoFade,
         transform: [{ scale: logoScale }],
         alignItems: 'center',
+        justifyContent: 'center',
       }}>
-        <LogoSVG size={220} />
+        {/* Glow circle — sized & centered relative to logo, not screen */}
+        <View style={[styles.bgGlow, { width: glowSize, height: glowSize, borderRadius: glowSize / 2 }]} />
+        <LogoSVG size={logoSize} />
       </Animated.View>
 
       {/* Text block */}
@@ -133,7 +97,7 @@ export default function SplashScreen({ navigation }) {
         styles.textBlock,
         { opacity: textFade, transform: [{ translateY: textSlide }] },
       ]}>
-        <Text style={styles.arabicName}>نور البيان</Text>
+        <Text style={[styles.arabicName, { fontSize: arabicSize }]}>نور البيان</Text>
 
         <View style={styles.divider}>
           <View style={styles.divLine} />
@@ -141,14 +105,14 @@ export default function SplashScreen({ navigation }) {
           <View style={styles.divLine} />
         </View>
 
-        <Text style={styles.englishName}>NOOR UL BAYAN</Text>
-        <Text style={styles.tagEn}>The Light of Clarity</Text>
-        <Text style={styles.tagUrdu}>قرآن کا نور </Text>
+        <Text style={[styles.englishName, { fontSize: engSize }]}>NOOR UL BAYAN</Text>
+        <Text style={[styles.tagEn,      { fontSize: tagSize }]}>The Light of Clarity</Text>
+        <Text style={[styles.tagUrdu,    { fontSize: tagSize + 2 }]}>قرآن کا نور</Text>
       </Animated.View>
 
       <View style={styles.midSpacer} />
 
-      {/* Get Started button — part of normal flow, not absolute */}
+      {/* Get Started button */}
       <Animated.View style={[
         styles.btnOuter,
         { opacity: btnFade, transform: [{ scale: btnScale }] },
@@ -163,7 +127,6 @@ export default function SplashScreen({ navigation }) {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Safe-area bottom padding */}
       <View style={styles.bottomPad} />
     </View>
   );
@@ -178,30 +141,22 @@ const styles = StyleSheet.create({
 
   topSpacer: { flex: 1.2 },
   midSpacer: { flex: 1 },
+  bottomPad: { height: Platform.OS === 'ios' ? 44 : 32 },
 
-  bottomPad: {
-    height: Platform.OS === 'ios' ? 44 : 32,
-  },
-
-  /* Radial background tint */
+  /* Glow — positioned absolute inside the logo container, auto-centered */
   bgGlow: {
     position: 'absolute',
-    width: 250,
-    height: 250,
-    borderRadius: 140,
     backgroundColor: '#1B4332',
-    opacity: 0.10,
-    top: height * 0.19,
+    opacity: 0.12,
   },
 
   /* Text */
   textBlock: {
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 20,
     paddingHorizontal: 16,
   },
   arabicName: {
-    fontSize: 44,
     fontWeight: '700',
     color: '#C9A84C',
     letterSpacing: 2,
@@ -214,51 +169,20 @@ const styles = StyleSheet.create({
     width: 200,
     marginBottom: 12,
   },
-  divLine: {
-    flex: 1,
-    height: 0.7,
-    backgroundColor: '#C9A84C',
-    opacity: 0.50,
-  },
+  divLine:    { flex: 1, height: 0.7, backgroundColor: '#C9A84C', opacity: 0.50 },
   divDiamond: {
-    width: 7,
-    height: 7,
+    width: 7, height: 7,
     backgroundColor: '#C9A84C',
     transform: [{ rotate: '45deg' }],
     marginHorizontal: 10,
     opacity: 0.72,
   },
-  englishName: {
-    fontSize: 14,
-    color: '#E8C875',
-    letterSpacing: 7,
-    marginBottom: 8,
-  },
-  tagEn: {
-    fontSize: 12,
-    color: '#5A8A6A',
-    letterSpacing: 2.5,
-    marginBottom: 6,
-  },
-  tagUrdu: {
-    fontSize: 14,
-    color: '#4A7A60',
-  },
+  englishName: { color: '#E8C875', letterSpacing: 7, marginBottom: 8 },
+  tagEn:   { color: '#5A8A6A', letterSpacing: 2.5, marginBottom: 6 },
+  tagUrdu: { color: '#4A7A60' },
 
   /* Button */
-  btnOuter: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnPulseRing: {
-    position: 'absolute',
-    width: 230,
-    height: 62,
-    borderRadius: 31,
-    borderWidth: 1,
-    borderColor: '#C9A84C',
-    opacity: 0.22,
-  },
+  btnOuter: { alignItems: 'center', justifyContent: 'center' },
   btn: {
     borderWidth: 1.5,
     borderColor: '#C9A84C',
@@ -268,25 +192,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(201,168,76,0.09)',
   },
-  btnUrdu: {
-    fontSize: 19,
-    color: '#C9A84C',
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  btnEn: {
-    fontSize: 10,
-    color: '#E8C875',
-    letterSpacing: 4,
-    marginTop: 3,
-    opacity: 0.80,
-  },
+  btnUrdu: { fontSize: 19, color: '#C9A84C', fontWeight: '700', letterSpacing: 1 },
+  btnEn:   { fontSize: 10, color: '#E8C875', letterSpacing: 4, marginTop: 3, opacity: 0.80 },
 
   /* Corner decorations */
   corner: {
     position: 'absolute',
-    width: 26,
-    height: 26,
+    width: 26, height: 26,
     borderColor: '#C9A84C',
     opacity: 0.20,
   },
