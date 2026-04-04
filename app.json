@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Noor ul Bayan",
+    "slug": "quran-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0C1520"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.quranapp.learning"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0C1520"
+      },
+      "package": "com.quranapp.learning"
+    },
+    "web": {},
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
