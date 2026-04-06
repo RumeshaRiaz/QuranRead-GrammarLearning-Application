@@ -177,6 +177,7 @@ export default function HomeScreen({ navigation }) {
   const [lastRead, setLastRead] = useState(null);
   const [userName, setUserName] = useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const sunriseRef = useRef(null); // store sunrise for tick
 
   const QUICK_ACTIONS = [
     { icon: 'book-open', label: "Read the Qur'an", labelU: 'قرآن پڑھیں', color: C.GOLD, screen: 'QuranReading' },
@@ -188,14 +189,20 @@ export default function HomeScreen({ navigation }) {
       const { status } = await Location.requestForegroundPermissionsAsync();
       let lat = 33.6844, lng = 73.0479;
       if (status === 'granted') {
-        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        lat = pos.coords.latitude;
-        lng = pos.coords.longitude;
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Low, // no Location Accuracy popup
+        });
+        if (pos) {
+          lat = pos.coords.latitude;
+          lng = pos.coords.longitude;
+        }
       }
       const times = getPrayerTimes(lat, lng);
+      sunriseRef.current = times.sunrise;
       setPrayers(getPrayerStatus(times));
     } catch (_) {
       const times = getPrayerTimes(33.6844, 73.0479);
+      sunriseRef.current = times.sunrise;
       setPrayers(getPrayerStatus(times));
     }
   }, []);
@@ -207,12 +214,20 @@ export default function HomeScreen({ navigation }) {
       setPrayers(prev => {
         if (!prev) return prev;
         const now = new Date();
+        const sunrise = sunriseRef.current;
+        const fajrPastSunrise = sunrise && now >= sunrise;
         let currentIdx = -1;
         for (let i = prev.length - 1; i >= 0; i--) {
           if (now >= prev[i].date) { currentIdx = i; break; }
         }
         const nextIdx = currentIdx < prev.length - 1 ? currentIdx + 1 : -1;
-        return prev.map((p, i) => ({ ...p, isCurrent: i === currentIdx, isNext: i === nextIdx, isPast: i < currentIdx }));
+        return prev.map((p, i) => ({
+          ...p,
+          isCurrent: i === currentIdx && !(i === 0 && fajrPastSunrise),
+          isNext: (i === nextIdx && !(currentIdx === 0 && fajrPastSunrise))
+            || (fajrPastSunrise && currentIdx === 0 && i === 1),
+          isPast: i < currentIdx || (i === 0 && fajrPastSunrise),
+        }));
       });
     }, 60000);
     return () => clearInterval(tick);
@@ -252,9 +267,11 @@ export default function HomeScreen({ navigation }) {
             <LogoSVG size={40} isDark={isDark} />
 
           </View>
-          <View>
-            <Text style={[s.greetSmall, { color: C.TEXT_S }]}>Assalamu Alaikum  •  السلام علیکم</Text>
-            <Text style={[s.greetName, { color: C.TEXT }]}>{userName || 'User'}</Text>
+          <View style={s.greetTextWrap}>
+            <Text style={[s.greetSmall, { color: C.TEXT_S }]} numberOfLines={1}>
+              Assalamu Alaikum  •  السلام علیکم
+            </Text>
+            <Text style={[s.greetName, { color: C.TEXT }]} numberOfLines={1}>{userName || 'User'}</Text>
           </View>
         </TouchableOpacity>
 
@@ -545,19 +562,21 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6,
     borderRadius: 14, borderWidth: 1,
     paddingHorizontal: 10, paddingVertical: 6,
+    flexShrink: 0,
   },
   dateBadgeTexts: { flexDirection: 'column' },
   dateTxtEn: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
   dateTxtHijri: { fontSize: 11, fontWeight: '700', textAlign: 'right', marginTop: 1, letterSpacing: 0.2 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
   headerRight: { flexDirection: 'row', gap: 8 },
-  avatarWrap: { position: 'relative' },
+  avatarWrap: { position: 'relative', flexShrink: 0 },
   onlineDot: {
     position: 'absolute', bottom: -1, right: -1,
     width: 10, height: 10, borderRadius: 5, borderWidth: 2,
   },
-  greetSmall: { fontSize: 12, letterSpacing: 0.3 },
-  greetName: { fontSize: 18, fontWeight: '600', marginTop: 1 },
+  greetTextWrap: { flex: 1, minWidth: 0 },
+  greetSmall: { fontSize: 12, letterSpacing: 0.3, flexShrink: 1 },
+  greetName: { fontSize: 18, fontWeight: '600', marginTop: 1, flexShrink: 1 },
   iconBtn: {
     width: 38, height: 38, borderRadius: 19, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',

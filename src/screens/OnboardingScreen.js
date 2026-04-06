@@ -62,8 +62,8 @@ export default function OnboardingScreen({ navigation }) {
    *
    * Using percentage ensures the card sits correctly on any screen size.
    */
-  const cardTopBottom    = height * 0.42;   // bottom: 42 % up = upper half
-  const cardBottomBottom = height * 0.14;   // bottom: 14 % up = just above nav
+  const cardTopPosition   = height * 0.22;   // top: 22% — upper-center, above mid
+  const cardBottomBottom  = height * 0.14;   // bottom: 14% — just above nav bar
 
   const animateToPage = (nextPage) => {
     Animated.parallel([
@@ -126,7 +126,9 @@ export default function OnboardingScreen({ navigation }) {
       <Animated.View
         style={[
           styles.cardWrapper,
-          { bottom: currentPage === 1 ? cardBottomBottom : cardTopBottom },
+          currentPage === 1
+            ? { bottom: cardBottomBottom }
+            : { top: cardTopPosition },
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
       >
