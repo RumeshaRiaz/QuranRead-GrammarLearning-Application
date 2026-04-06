@@ -11,6 +11,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const PAGES = [
   {
@@ -37,6 +38,7 @@ const PAGES = [
 ];
 
 export default function OnboardingScreen({ navigation }) {
+  const { colors: C } = useTheme();
   /* Always read live dimensions — works on every screen size */
   const { width, height } = useWindowDimensions();
 
@@ -97,7 +99,7 @@ export default function OnboardingScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar translucent barStyle="light-content" backgroundColor="transparent" />
+      <StatusBar translucent barStyle={C.statusBar} backgroundColor="transparent" />
 
       {/* Background image — fills screen using dynamic dimensions */}
       <Image

@@ -6,6 +6,7 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 import HomeScreen from '../screens/HomeScreen';
 import QuranReadingScreen from '../screens/QuranReadingScreen';
 import GrammarLearningScreen from '../screens/GrammarLearningScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Stack = createStackNavigator();
 
@@ -41,6 +42,7 @@ export default function AppNavigator() {
           component={GrammarLearningScreen}
           options={{ gestureDirection: 'horizontal-inverted' }}
         />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

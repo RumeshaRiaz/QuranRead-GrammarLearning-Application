@@ -1,9 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, StatusBar, Platform, Modal, ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
+import { saveProgress, loadProgress } from '../utils/readingProgress';
 
 /* ── Offline data ── */
 import QURAN_DATA from '../assets/quran.json';
@@ -1881,12 +1883,12 @@ const IRAB_DATA = {
         wordType: 'حرف',
         typeColor: HARF_C,
         root: null,
-        morphForm: 'کاف تشبیہ + ما مصدریہ',
+        morphForm: 'کاف تشبیہ + ما مصدریہ/کافہ',
         grammaticalCase: null,
-        irabRole: 'تشبیہ تحقیری',
+        irabRole: 'تشبیہ — متعلق بأنؤمن',
         governingElement: 'أَنُؤْمِنُ',
-        notes: 'کما — یہاں تحقیر کے لیے: کیا ہم ایمان لائیں جیسے ان بے وقوفوں نے لایا؟ انہوں نے مومنوں کو سفہاء (بے وقوف) کہا۔',
-        classicalExplanation: 'كَمَا: كَافُ التَّشْبِيهِ مُتَعَلِّقٌ بِنُؤْمِنُ تَحْقِيرًا لِإِيمَانِ الْمُؤْمِنِينَ۔',
+        notes: 'کما — ک تشبیہ + ما مصدریہ۔ منافقین کا استہزائی سوال: کیا ہم اس طرح ایمان لائیں جیسے بے وقوف لوگوں نے لایا؟',
+        classicalExplanation: 'كَمَا: الْكَافُ حَرْفُ تَشْبِيهٍ وَجَرٍّ وَمَا مَصْدَرِيَّةٌ وَالتَّقْدِيرُ إِيمَانًا كَإِيمَانِ السُّفَهَاءِ۔',
       },
       {
         wordIndex: 10,
@@ -1899,8 +1901,8 @@ const IRAB_DATA = {
         grammaticalCase: null,
         irabRole: 'صلہ ما مصدریہ',
         governingElement: 'كَمَا',
-        notes: 'آمن — فاعل: السفہاء (منافقین کی نظر میں مومن)۔',
-        classicalExplanation: 'آمَنَ: صِلَةُ مَا الْمَصْدَرِيَّةِ۔',
+        notes: 'آمن — فاعل: السفہاء۔ منافقین کا طعنہ: جیسے بے وقوفوں نے ایمان لایا — اللہ نے اگلے جملے میں یہ الفاظ ان پر الٹا کر دیے۔',
+        classicalExplanation: 'آمَنَ: صِلَةُ مَا الْمَصْدَرِيَّةِ فِعْلٌ مَاضٍ۔',
       },
       {
         wordIndex: 11,
@@ -2352,28 +2354,33 @@ const IRAB_DATA = {
    WORD DETAIL PANEL  —  Bottom sheet showing I'rab analysis
    ───────────────────────────────────────────────────────────── */
 function IrabSection({ icon, title, content, arabic }) {
+  const { colors: C } = useTheme();
   const [open, setOpen] = useState(true);
   return (
-    <View style={sp.section}>
+    <View style={[sp.section, { backgroundColor: C.CARD2, borderColor: C.BORDER }]}>
       <TouchableOpacity style={sp.sectionHeader} onPress={() => setOpen(o => !o)} activeOpacity={0.7}>
         <View style={sp.sectionLeft}>
-          <Feather name={icon} size={14} color={GOLD} />
-          <Text style={sp.sectionTitle}>{title}</Text>
+          <Feather name={icon} size={14} color={C.GOLD} />
+          <Text style={[sp.sectionTitle, { color: C.TEXT_S }]}>{title}</Text>
         </View>
-        <Feather name={open ? 'chevron-up' : 'chevron-down'} size={14} color={TEXT_S} />
+        <Feather name={open ? 'chevron-up' : 'chevron-down'} size={14} color={C.TEXT_S} />
       </TouchableOpacity>
       {open && (
-        <Text style={[sp.sectionBody, arabic && sp.sectionBodyAr]}>{content}</Text>
+        <Text style={arabic
+          ? [sp.sectionBodyAr, { color: C.GOLD_L }]
+          : [sp.sectionBody, { color: C.TEXT }]}
+        >{content}</Text>
       )}
     </View>
   );
 }
 
 function WordDetailPanel({ word, onClose }) {
+  const { colors: C } = useTheme();
   if (!word) return null;
 
   const typeLabel = word.wordType;
-  const tc        = word.typeColor || GOLD;
+  const tc        = word.typeColor || C.GOLD;
 
   return (
     <Modal
@@ -2386,8 +2393,8 @@ function WordDetailPanel({ word, onClose }) {
       {/* Dim overlay — tap outside to close */}
       <TouchableOpacity style={sp.overlay} onPress={onClose} activeOpacity={1}>
         {/* Sheet — prevent tap-through */}
-        <TouchableOpacity style={sp.sheet} activeOpacity={1} onPress={() => {}}>
-          <View style={sp.handle} />
+        <TouchableOpacity style={[sp.sheet, { backgroundColor: C.CARD2 }]} activeOpacity={1} onPress={() => {}}>
+          <View style={[sp.handle, { backgroundColor: C.BORDER }]} />
 
           {/* ── Word header ── */}
           <View style={sp.wordHeader}>
@@ -2395,12 +2402,12 @@ function WordDetailPanel({ word, onClose }) {
               <View style={[sp.typeBadge, { backgroundColor: tc + '22', borderColor: tc + '55' }]}>
                 <Text style={[sp.typeTxt, { color: tc }]}>{typeLabel}</Text>
               </View>
-              <Text style={sp.meaningTxt}>{word.urduMeaning}</Text>
+              <Text style={[sp.meaningTxt, { color: C.TEXT }]}>{word.urduMeaning}</Text>
             </View>
-            <Text style={sp.wordArabic}>{word.arabicWord}</Text>
+            <Text style={[sp.wordArabic, { color: C.GOLD_L }]}>{word.arabicWord}</Text>
           </View>
 
-          <View style={sp.divider} />
+          <View style={[sp.divider, { backgroundColor: C.BORDER }]} />
 
           {/* ── Details ── */}
           <ScrollView showsVerticalScrollIndicator={false} style={sp.scroll}>
@@ -2454,33 +2461,31 @@ function WordDetailPanel({ word, onClose }) {
 
 /* ── Verse row ── */
 const AyahItem = React.memo(({ item, transMode, onWordPress }) => {
+  const { colors: C } = useTheme();
   const showEn = transMode === 'en' || transMode === 'both';
   const showUr = transMode === 'ur' || transMode === 'both';
   const hasTrans = showEn || showUr;
 
-  /* Parse surah and ayah numbers from verseKey */
   const [surahNum, ayahNum] = item.verseKey.split(':').map(Number);
-
-  /* Check if I'rab analysis is available for this ayah */
   const irabWords = IRAB_DATA[surahNum]?.[ayahNum];
   const hasIrab   = Array.isArray(irabWords) && irabWords.length > 0;
   const arabicWords = hasIrab ? item.arabic.split(' ') : null;
 
   return (
-    <View style={s.ayahCard}>
+    <View style={[s.ayahCard, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
       {/* Top row: verse number + key */}
       <View style={s.ayahTopRow}>
-        <View style={s.ayahNumBadge}>
-          <Text style={s.ayahNum}>{item.verseNumber}</Text>
+        <View style={[s.ayahNumBadge, { backgroundColor: C.EMERALD + '50', borderColor: C.GOLD + '30' }]}>
+          <Text style={[s.ayahNum, { color: C.GOLD }]}>{item.verseNumber}</Text>
         </View>
-        <Text style={s.ayahKey}>{item.verseKey}</Text>
+        <Text style={[s.ayahKey, { color: C.TEXT_S }]}>{item.verseKey}</Text>
         {hasIrab && (
-          <View style={s.irabBadge}>
-            <Feather name="zap" size={9} color={GOLD} />
-            <Text style={s.irabBadgeTxt}>اعراب</Text>
+          <View style={[s.irabBadge, { backgroundColor: FIL_C + '18', borderColor: FIL_C + '40' }]}>
+            <Feather name="zap" size={9} color={FIL_C} />
+            <Text style={[s.irabBadgeTxt, { color: FIL_C }]}>اعراب</Text>
           </View>
         )}
-        <View style={s.ayahTopLine} />
+        <View style={[s.ayahTopLine, { backgroundColor: C.BORDER }]} />
       </View>
 
       {/* Arabic text — tappable words when I'rab data exists */}
@@ -2493,9 +2498,9 @@ const AyahItem = React.memo(({ item, transMode, onWordPress }) => {
                 key={idx}
                 onPress={() => wd && onWordPress(wd)}
                 activeOpacity={wd ? 0.6 : 1}
-                style={[s.wordToken, wd && s.wordTokenActive]}
+                style={[s.wordToken, wd && { backgroundColor: C.GOLD + '10', borderColor: C.GOLD + '30' }]}
               >
-                <Text style={[s.arabicWordTxt, wd && s.arabicWordTxtActive]}>
+                <Text style={[s.arabicWordTxt, { color: C.TEXT }, wd && { color: C.GOLD_L }]}>
                   {w}
                 </Text>
                 {wd && <View style={[s.wordDot, { backgroundColor: wd.typeColor }]} />}
@@ -2504,22 +2509,22 @@ const AyahItem = React.memo(({ item, transMode, onWordPress }) => {
           })}
         </View>
       ) : (
-        <Text style={s.arabicText}>{item.arabic}</Text>
+        <Text style={[s.arabicText, { color: C.TEXT }]}>{item.arabic}</Text>
       )}
 
       {/* Translations */}
       {hasTrans && (
-        <View style={s.transBlock}>
+        <View style={[s.transBlock, { borderTopColor: C.BORDER }]}>
           {showUr && (
             <View style={s.transRow}>
-              <View style={s.transLangDot} />
-              <Text style={s.urduText}>{item.urdu}</Text>
+              <View style={[s.transLangDot, { backgroundColor: C.EMERALD + '80' }]} />
+              <Text style={[s.urduText, { color: C.TEXT }]}>{item.urdu}</Text>
             </View>
           )}
           {showEn && (
             <View style={[s.transRow, showUr && { marginTop: 8 }]}>
-              <View style={[s.transLangDot, { backgroundColor: GOLD + '60' }]} />
-              <Text style={s.englishText}>{item.english}</Text>
+              <View style={[s.transLangDot, { backgroundColor: C.GOLD + '60' }]} />
+              <Text style={[s.englishText, { color: C.TEXT_S }]}>{item.english}</Text>
             </View>
           )}
         </View>
@@ -2530,35 +2535,36 @@ const AyahItem = React.memo(({ item, transMode, onWordPress }) => {
 
 /* ── Surah selector modal ── */
 function SurahModal({ visible, selected, onSelect, onClose }) {
+  const { colors: C } = useTheme();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={s.modalOverlay}>
-        <View style={s.modalSheet}>
-          <View style={s.modalHandle} />
-          <Text style={s.modalTitle}>Select Surah  •  سورہ منتخب کریں</Text>
+        <View style={[s.modalSheet, { backgroundColor: C.CARD2 }]}>
+          <View style={[s.modalHandle, { backgroundColor: C.BORDER }]} />
+          <Text style={[s.modalTitle, { color: C.GOLD_L }]}>Select Surah  •  سورہ منتخب کریں</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
             {SURAHS.map(sr => {
               const active = sr.n === selected.n;
               return (
                 <TouchableOpacity
                   key={sr.n}
-                  style={[s.surahRow, active && s.surahRowActive]}
+                  style={[s.surahRow, { borderBottomColor: C.BORDER }, active && { backgroundColor: C.GOLD + '12', borderRadius: 12, paddingHorizontal: 8 }]}
                   onPress={() => { onSelect(sr); onClose(); }}
                   activeOpacity={0.75}
                 >
-                  <View style={[s.surahNumBox, active && s.surahNumBoxActive]}>
-                    <Text style={[s.surahNum, active && { color: BG }]}>{sr.n}</Text>
+                  <View style={[s.surahNumBox, { backgroundColor: C.EMERALD + '40', borderColor: C.GOLD + '25' }, active && { backgroundColor: C.GOLD }]}>
+                    <Text style={[s.surahNum, { color: C.GOLD }, active && { color: C.BG }]}>{sr.n}</Text>
                   </View>
                   <View style={s.surahInfo}>
-                    <Text style={[s.surahEn, active && { color: GOLD }]}>{sr.en}</Text>
+                    <Text style={[s.surahEn, { color: C.TEXT }, active && { color: C.GOLD }]}>{sr.en}</Text>
                     <View style={s.surahMetaRow}>
-                      <Text style={s.surahMetaTxt}>{sr.v} verses</Text>
-                      <View style={[s.typeBadge, sr.mec ? s.meccan : s.medinan]}>
-                        <Text style={s.typeTxt}>{sr.mec ? 'Meccan' : 'Medinan'}</Text>
+                      <Text style={[s.surahMetaTxt, { color: C.TEXT_S }]}>{sr.v} verses</Text>
+                      <View style={[s.typeBadge, sr.mec ? { backgroundColor: C.GOLD + '20' } : { backgroundColor: C.EMERALD + '50' }]}>
+                        <Text style={[s.typeTxt, { color: C.TEXT_S }]}>{sr.mec ? 'Meccan' : 'Medinan'}</Text>
                       </View>
                     </View>
                   </View>
-                  <Text style={s.surahAr}>{sr.ar}</Text>
+                  <Text style={[s.surahAr, { color: C.GOLD }]}>{sr.ar}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -2591,6 +2597,7 @@ function TransPicker({ mode, onSelect, onClose }) {
 
 /* ── Main Screen ── */
 export default function QuranReadingScreen({ navigation, route }) {
+  const { colors: C } = useTheme();
   const params = route?.params || {};
 
   const initialSurah = params.surahNum
@@ -2602,6 +2609,11 @@ export default function QuranReadingScreen({ navigation, route }) {
   const [showSurahModal, setShowSurahModal] = useState(!!params.openSurahList);
   const [showTransPicker,setShowTransPicker]= useState(false);
   const [selectedWord,   setSelectedWord]   = useState(null);
+  // Stores the saved ayah to resume when a surah is picked from the in-app modal
+  const [modalResumeAyah, setModalResumeAyah] = useState(null);
+
+  const flatListRef    = useRef(null);
+  const visibleAyahRef = useRef(params.resumeAyah || 1);
 
   /* Build verse list from local JSON — instant, no async needed */
   const verses = useMemo(() => {
@@ -2618,6 +2630,97 @@ export default function QuranReadingScreen({ navigation, route }) {
       urdu:        urArr[i]?.text || '',
     }));
   }, [surah]);
+
+  /* Scroll reliably to the saved ayah after items are rendered.
+     We retry at 200 / 600 / 1200 ms because FlatList virtualises items
+     and scrollToIndex can silently fail if the target isn’t rendered yet. */
+  /* Scroll to saved ayah ONLY when opened via "Last Read" (params.resumeAyah set).
+     Any other navigation (Popular Surahs, View All, etc.) passes no resumeAyah → skips.
+     surah.n guard prevents scroll when user switches surah via the in-app modal. */
+  useEffect(() => {
+    const target = params.resumeAyah;
+    if (!target || target <= 1 || verses.length === 0) return;  // no resume requested
+    if (surah.n !== params.surahNum) return;                     // surah switched via modal
+
+    const idx = verses.findIndex(v => v.verseNumber === target);
+    if (idx <= 0) return;
+
+    const attempt = () =>
+      flatListRef.current?.scrollToIndex({ index: idx, animated: false, viewPosition: 0 });
+
+    const t1 = setTimeout(attempt, 200);
+    const t2 = setTimeout(attempt, 600);
+    const t3 = setTimeout(attempt, 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [params.resumeAyah, params.surahNum, verses]);
+
+  /* Scroll to saved ayah when a surah is picked from the in-app modal.
+     Mirrors the params.resumeAyah logic but uses modalResumeAyah state. */
+  useEffect(() => {
+    if (!modalResumeAyah || modalResumeAyah <= 1 || verses.length === 0) return;
+
+    const idx = verses.findIndex(v => v.verseNumber === modalResumeAyah);
+    if (idx <= 0) return;
+
+    const attempt = () =>
+      flatListRef.current?.scrollToIndex({ index: idx, animated: false, viewPosition: 0 });
+
+    const t1 = setTimeout(attempt, 200);
+    const t2 = setTimeout(attempt, 600);
+    const t3 = setTimeout(attempt, 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [modalResumeAyah, verses]);
+
+  /* Save progress whenever visible ayah changes */
+  const handleSaveProgress = useCallback((ayahNum) => {
+    saveProgress({
+      surahNum:   surah.n,
+      surahEn:    surah.en,
+      surahAr:    surah.ar,
+      ayahNum,
+      totalAyahs: surah.v,
+    });
+  }, [surah]);
+
+  /* Track LAST visible ayah via FlatList viewability (furthest seen on screen) */
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 30 }).current;
+  const onViewableItemsChanged = useCallback(({ viewableItems }) => {
+    if (viewableItems.length > 0) {
+      // take the bottommost visible ayah — furthest the user has actually seen
+      const lastVisible = viewableItems[viewableItems.length - 1].item.verseNumber;
+      // only advance forward; scrolling up should never reduce stored progress
+      if (lastVisible > visibleAyahRef.current) {
+        visibleAyahRef.current = lastVisible;
+        handleSaveProgress(lastVisible);
+      }
+    }
+  }, [handleSaveProgress]);
+
+  /* Surah selected from in-app modal:
+     Load saved progress for the new surah → if found, resume from saved ayah.
+     Otherwise scroll to top (ayah 1). */
+  const handleSurahSelect = useCallback(async (newSurah) => {
+    setModalResumeAyah(null);          // clear previous resume target first
+    setSurah(newSurah);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false }); // instant top
+    visibleAyahRef.current = 1;
+
+    // Check if the user has saved progress for this surah
+    const saved = await loadProgress();
+    if (saved && saved.surahNum === newSurah.n && saved.ayahNum > 1) {
+      visibleAyahRef.current = saved.ayahNum;
+      setModalResumeAyah(saved.ayahNum); // triggers the useEffect above to scroll
+    } else {
+      // No saved progress for this surah → save fresh start at ayah 1
+      saveProgress({
+        surahNum:   newSurah.n,
+        surahEn:    newSurah.en,
+        surahAr:    newSurah.ar,
+        ayahNum:    1,
+        totalAyahs: newSurah.v,
+      });
+    }
+  }, []);
 
   const activeTransLabel = TRANS_MODES.find(m => m.key === transMode)?.label || 'Arabic Only';
 
@@ -2640,58 +2743,66 @@ export default function QuranReadingScreen({ navigation, route }) {
   const hasIrabForSurah = !!IRAB_DATA[surah.n];
 
   return (
-    <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+    <View style={[s.root, { backgroundColor: C.BG }]}>
+      <StatusBar barStyle={C.statusBar} backgroundColor={C.BG} />
 
       {/* ── Header ── */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.iconBtn}>
-          <Feather name="arrow-left" size={20} color={GOLD} />
+      <View style={[s.header, { backgroundColor: C.BG, borderBottomColor: C.BORDER }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[s.iconBtn, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
+          <Feather name="arrow-left" size={20} color={C.GOLD} />
         </TouchableOpacity>
 
         {/* Surah selector */}
         <TouchableOpacity
-          style={s.surahSelector}
+          style={[s.surahSelector, { backgroundColor: C.CARD, borderColor: C.BORDER }]}
           onPress={() => { setShowTransPicker(false); setShowSurahModal(true); }}
           activeOpacity={0.8}
         >
-          <Text style={s.headerSurahEn} numberOfLines={1}>{surah.en}</Text>
-          <Text style={s.headerSurahAr} numberOfLines={1}>{surah.ar}</Text>
+          <Text style={[s.headerSurahEn, { color: C.TEXT }]} numberOfLines={1}>{surah.en}</Text>
+          <Text style={[s.headerSurahAr, { color: C.GOLD }]} numberOfLines={1}>{surah.ar}</Text>
         </TouchableOpacity>
 
         {/* Translation toggle */}
         <TouchableOpacity
-          style={[s.iconBtn, transMode !== 'none' && s.iconBtnActive]}
+          style={[s.iconBtn, { backgroundColor: C.CARD, borderColor: C.BORDER }, transMode !== 'none' && { backgroundColor: C.GOLD, borderColor: C.GOLD }]}
           onPress={() => { setShowSurahModal(false); setShowTransPicker(p => !p); }}
         >
-          <Feather name="type" size={18} color={transMode !== 'none' ? BG : TEXT_S} />
+          <Feather name="type" size={18} color={transMode !== 'none' ? C.BG : C.TEXT_S} />
         </TouchableOpacity>
       </View>
 
       {/* ── Translation picker dropdown ── */}
       {showTransPicker && (
-        <TransPicker
-          mode={transMode}
-          onSelect={setTransMode}
-          onClose={() => setShowTransPicker(false)}
-        />
+        <View style={[s.transPicker, { backgroundColor: C.CARD2, borderBottomColor: C.BORDER }]}>
+          {TRANS_MODES.map(m => (
+            <TouchableOpacity
+              key={m.key}
+              style={[s.transOption, { borderColor: C.BORDER }, transMode === m.key && { backgroundColor: C.GOLD, borderColor: C.GOLD }]}
+              onPress={() => { setTransMode(m.key); setShowTransPicker(false); }}
+              activeOpacity={0.8}
+            >
+              <Text style={[s.transOptionTxt, { color: C.TEXT }, transMode === m.key && { color: C.BG }]}>{m.label}</Text>
+              <Text style={[s.transOptionUrdu, { color: C.TEXT_S }, transMode === m.key && { color: C.BG + 'CC' }]}>{m.labelU}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       )}
 
       {/* ── Info bar ── */}
       <View style={s.infoBar}>
-        <View style={[s.typeBadge, surah.mec ? s.meccan : s.medinan]}>
-          <Text style={s.typeTxt}>{surah.mec ? 'Meccan' : 'Medinan'}</Text>
+        <View style={[s.typeBadge, surah.mec ? { backgroundColor: C.GOLD + '22' } : { backgroundColor: C.EMERALD + '44' }]}>
+          <Text style={[s.typeTxt, { color: C.TEXT_S }]}>{surah.mec ? 'Meccan' : 'Medinan'}</Text>
         </View>
-        <Text style={s.infoTxt}>{surah.v} verses</Text>
+        <Text style={[s.infoTxt, { color: C.TEXT_S }]}>{surah.v} verses</Text>
         {transMode !== 'none' && (
           <>
-            <View style={s.infoDot} />
-            <Text style={[s.infoTxt, { color: GOLD }]}>{activeTransLabel}</Text>
+            <View style={[s.infoDot, { backgroundColor: C.TEXT_S }]} />
+            <Text style={[s.infoTxt, { color: C.GOLD }]}>{activeTransLabel}</Text>
           </>
         )}
         {hasIrabForSurah && (
           <>
-            <View style={s.infoDot} />
+            <View style={[s.infoDot, { backgroundColor: C.TEXT_S }]} />
             <Feather name="zap" size={10} color={FIL_C} />
             <Text style={[s.infoTxt, { color: FIL_C }]}>اعراب دستیاب</Text>
           </>
@@ -2699,39 +2810,57 @@ export default function QuranReadingScreen({ navigation, route }) {
         <View style={{ flex: 1 }} />
         {/* All Surahs button */}
         <TouchableOpacity
-          style={s.allSurahsBtn}
+          style={[s.allSurahsBtn, { backgroundColor: C.GOLD + '18', borderColor: C.GOLD + '40' }]}
           onPress={() => { setShowTransPicker(false); setShowSurahModal(true); }}
           activeOpacity={0.8}
         >
-          <Feather name="list" size={13} color={GOLD} />
-          <Text style={s.allSurahsTxt}>تمام سورتیں</Text>
+          <Feather name="list" size={13} color={C.GOLD} />
+          <Text style={[s.allSurahsTxt, { color: C.GOLD }]}>تمام سورتیں</Text>
         </TouchableOpacity>
       </View>
 
       {/* ── Bismillah (skip Surah 9) ── */}
       {surah.n !== 9 && (
-        <View style={s.bismillah}>
-          <Text style={s.bismillahText}>بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ</Text>
+        <View style={[s.bismillah, { borderBottomColor: C.BORDER }]}>
+          <Text style={[s.bismillahText, { color: C.GOLD }]}>بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ</Text>
         </View>
       )}
 
       {/* ── Verse list ── */}
       <FlatList
+        ref={flatListRef}
         data={verses}
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={s.listPad}
         showsVerticalScrollIndicator={false}
-        initialNumToRender={12}
-        maxToRenderPerBatch={12}
-        windowSize={6}
+        initialNumToRender={15}
+        maxToRenderPerBatch={15}
+        windowSize={8}
+        viewabilityConfig={viewabilityConfig}
+        onViewableItemsChanged={onViewableItemsChanged}
+        onScrollToIndexFailed={(info) => {
+          // fallback: scroll to estimated offset when item not yet rendered
+          flatListRef.current?.scrollToOffset({
+            offset: info.averageItemLength * info.index,
+            animated: false,
+          });
+          // then retry once the item is likely rendered
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: info.index,
+              animated: false,
+              viewPosition: 0,
+            });
+          }, 400);
+        }}
       />
 
       {/* ── Surah modal ── */}
       <SurahModal
         visible={showSurahModal}
         selected={surah}
-        onSelect={setSurah}
+        onSelect={handleSurahSelect}
         onClose={() => setShowSurahModal(false)}
       />
 
@@ -2771,8 +2900,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 10,
     borderWidth: 1, borderColor: BORDER,
   },
-  headerSurahEn: { fontSize: 17, color: TEXT, fontWeight: '700', flex: 1 },
-  headerSurahAr: { fontSize: 19, color: GOLD, fontWeight: '700', flex: 1, textAlign: 'right' },
+  headerSurahEn: { fontSize: 19, color: TEXT, fontWeight: '700', flex: 1 },
+  headerSurahAr: { fontSize: 21, color: GOLD, fontWeight: '700', flex: 1, textAlign: 'right' },
 
   /* Translation picker */
   transPicker: {
@@ -2785,22 +2914,22 @@ const s = StyleSheet.create({
     borderRadius: 12, borderWidth: 1, borderColor: BORDER,
   },
   transOptionActive: { backgroundColor: GOLD, borderColor: GOLD },
-  transOptionTxt:   { fontSize: 13, color: TEXT, fontWeight: '600' },
-  transOptionUrdu:  { fontSize: 12, color: TEXT_S },
+  transOptionTxt:   { fontSize: 15, color: TEXT, fontWeight: '600' },
+  transOptionUrdu:  { fontSize: 14, color: TEXT_S },
 
   /* Info bar */
   infoBar: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 16, paddingVertical: 8,
   },
-  infoTxt: { fontSize: 11, color: TEXT_S },
+  infoTxt: { fontSize: 13, color: TEXT_S },
   infoDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: TEXT_S, opacity: 0.5 },
   allSurahsBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: GOLD + '18', borderWidth: 1, borderColor: GOLD + '40',
     borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
   },
-  allSurahsTxt: { fontSize: 12, color: GOLD, fontWeight: '600' },
+  allSurahsTxt: { fontSize: 14, color: GOLD, fontWeight: '600' },
 
   /* Bismillah */
   bismillah: {
@@ -2810,7 +2939,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 0.7, borderBottomColor: BORDER,
     marginBottom: 4,
   },
-  bismillahText: { fontSize: 22, color: GOLD, textAlign: 'center', lineHeight: 40 },
+  bismillahText: { fontSize: 28, color: GOLD, textAlign: 'center', lineHeight: 48 },
 
   /* Verse list */
   listPad: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 50 },
@@ -2831,8 +2960,8 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: GOLD + '30',
     alignItems: 'center', justifyContent: 'center',
   },
-  ayahNum:    { fontSize: 11, color: GOLD, fontWeight: '700' },
-  ayahKey:    { fontSize: 10, color: TEXT_S, letterSpacing: 0.5 },
+  ayahNum:    { fontSize: 13, color: GOLD, fontWeight: '700' },
+  ayahKey:    { fontSize: 12, color: TEXT_S, letterSpacing: 0.5 },
   ayahTopLine:{ flex: 1, height: 0.5, backgroundColor: BORDER },
 
   /* I'rab available badge */
@@ -2841,7 +2970,7 @@ const s = StyleSheet.create({
     backgroundColor: FIL_C + '18', borderWidth: 1, borderColor: FIL_C + '40',
     borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2,
   },
-  irabBadgeTxt: { fontSize: 9, color: FIL_C, fontWeight: '700' },
+  irabBadgeTxt: { fontSize: 11, color: FIL_C, fontWeight: '700' },
 
   /* Arabic word tokens (tappable) */
   arabicWordsWrap: {
@@ -2865,8 +2994,8 @@ const s = StyleSheet.create({
     borderColor: GOLD + '30',
   },
   arabicWordTxt: {
-    fontSize: 26, color: TEXT,
-    lineHeight: 44, letterSpacing: 0.5,
+    fontSize: 32, color: TEXT,
+    lineHeight: 54, letterSpacing: 0.5,
     textAlign: 'center',
   },
   arabicWordTxtActive: {
@@ -2880,8 +3009,8 @@ const s = StyleSheet.create({
 
   /* Plain Arabic (no I'rab) */
   arabicText: {
-    fontSize: 26, color: TEXT,
-    textAlign: 'right', lineHeight: 52,
+    fontSize: 32, color: TEXT,
+    textAlign: 'right', lineHeight: 58,
     letterSpacing: 0.5,
   },
 
@@ -2899,12 +3028,12 @@ const s = StyleSheet.create({
     borderRadius: 2,
   },
   urduText: {
-    flex: 1, fontSize: 15, color: TEXT,
-    textAlign: 'right', lineHeight: 28,
+    flex: 1, fontSize: 18, color: TEXT,
+    textAlign: 'right', lineHeight: 32,
   },
   englishText: {
-    flex: 1, fontSize: 13, color: TEXT_S,
-    textAlign: 'left', lineHeight: 22, fontStyle: 'italic',
+    flex: 1, fontSize: 16, color: TEXT_S,
+    textAlign: 'left', lineHeight: 26, fontStyle: 'italic',
   },
 
   /* Surah modal */
@@ -2922,7 +3051,7 @@ const s = StyleSheet.create({
     backgroundColor: BORDER, alignSelf: 'center', marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 15, color: GOLD_L, fontWeight: '700',
+    fontSize: 17, color: GOLD_L, fontWeight: '700',
     textAlign: 'center', marginBottom: 16,
   },
   surahRow: {
@@ -2939,16 +3068,16 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   surahNumBoxActive: { backgroundColor: GOLD },
-  surahNum:  { fontSize: 12, color: GOLD, fontWeight: '700' },
+  surahNum:  { fontSize: 14, color: GOLD, fontWeight: '700' },
   surahInfo: { flex: 1 },
-  surahEn:   { fontSize: 14, color: TEXT, fontWeight: '600' },
+  surahEn:   { fontSize: 16, color: TEXT, fontWeight: '600' },
   surahMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
-  surahMetaTxt: { fontSize: 11, color: TEXT_S },
-  surahAr:   { fontSize: 18, color: GOLD },
+  surahMetaTxt: { fontSize: 13, color: TEXT_S },
+  surahAr:   { fontSize: 20, color: GOLD },
   typeBadge: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
   meccan:    { backgroundColor: GOLD + '20' },
   medinan:   { backgroundColor: EMERALD + '50' },
-  typeTxt:   { fontSize: 9, color: TEXT_S, fontWeight: '600' },
+  typeTxt:   { fontSize: 11, color: TEXT_S, fontWeight: '600' },
 });
 
 /* ── Word Detail Panel styles ── */
@@ -2989,15 +3118,15 @@ const sp = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 4,
   },
   typeTxt: {
-    fontSize: 13, fontWeight: '700',
+    fontSize: 15, fontWeight: '700',
   },
   meaningTxt: {
-    fontSize: 18, color: TEXT, fontWeight: '600',
+    fontSize: 20, color: TEXT, fontWeight: '600',
     textAlign: 'left',
   },
   wordArabic: {
-    fontSize: 38, color: GOLD_L, fontWeight: '700',
-    textAlign: 'right', lineHeight: 56,
+    fontSize: 42, color: GOLD_L, fontWeight: '700',
+    textAlign: 'right', lineHeight: 60,
     flex: 1,
   },
 
@@ -3032,18 +3161,18 @@ const sp = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: {
-    fontSize: 13, color: TEXT_S, fontWeight: '600',
+    fontSize: 15, color: TEXT_S, fontWeight: '600',
   },
   sectionBody: {
-    fontSize: 14, color: TEXT,
+    fontSize: 16, color: TEXT,
     paddingHorizontal: 14, paddingBottom: 12,
-    lineHeight: 24,
+    lineHeight: 28,
     textAlign: 'right',
   },
   sectionBodyAr: {
-    fontSize: 15,
+    fontSize: 18,
     color: GOLD_L,
-    lineHeight: 28,
+    lineHeight: 32,
     textAlign: 'right',
   },
 });

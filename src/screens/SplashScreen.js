@@ -11,8 +11,10 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import LogoSVG from '../components/LogoSVG';
+import { useTheme } from '../context/ThemeContext';
 
 export default function SplashScreen({ navigation }) {
+  const { colors: C } = useTheme();
   const { width, height } = useWindowDimensions();
 
   const logoFade  = useRef(new Animated.Value(0)).current;
@@ -70,7 +72,7 @@ export default function SplashScreen({ navigation }) {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#0C1520" />
+      <StatusBar barStyle={C.statusBar} backgroundColor="#0C1520" />
 
       {/* Corner brackets */}
       <View style={[styles.corner, styles.cTL]} />

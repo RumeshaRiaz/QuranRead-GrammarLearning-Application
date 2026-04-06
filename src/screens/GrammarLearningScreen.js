@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, FlatList, StatusBar, Platform, Modal,
+  ScrollView, FlatList, StatusBar, Platform, Modal, Dimensions,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 /* ── Colors ── */
 const BG       = '#0C1520';
@@ -700,47 +701,77 @@ const CHAPTERS = [
 ───────────────────────────────────────────────────────────────── */
 
 function GrammarTable({ headers, rows, arabicCols = [1] }) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tableScroll}>
-      <View>
-        {/* Header row */}
-        <View style={s.tableHeaderRow}>
-          {headers.map((h, i) => (
-            <View key={i} style={s.tableHeaderCell}>
-              <Text style={s.tableHeaderTxt}>{h}</Text>
-            </View>
-          ))}
+  const { colors: C } = useTheme();
+  const screenW = Dimensions.get('window').width;
+  // modal has 22px horizontal padding on each side; give some breathing room
+  const availW = screenW - 44;
+  const cols = headers.length;
+  // each cell gets an equal share, minimum 88px
+  const cellW = Math.max(88, Math.floor(availW / cols));
+  // if all cells fit within screen, no horizontal scroll needed
+  const totalW = cellW * cols;
+  const needsScroll = totalW > availW;
+
+  const headerRow = (
+    <View style={[s.tableHeaderRow, { backgroundColor: C.GOLD + '25', width: needsScroll ? totalW : '100%' }]}>
+      {headers.map((h, i) => (
+        <View key={i} style={[s.tableHeaderCell, { width: cellW, borderLeftColor: C.BORDER }]}>
+          <Text style={[s.tableHeaderTxt, { color: C.GOLD_L }]} numberOfLines={2}>{h}</Text>
         </View>
-        {/* Data rows */}
-        {rows.map((row, ri) => (
-          <View key={ri} style={[s.tableDataRow, ri % 2 === 0 && s.tableRowAlt]}>
-            {row.map((cell, ci) => (
-              <View key={ci} style={s.tableDataCell}>
-                <Text style={[s.tableDataTxt, arabicCols.includes(ci) && s.tableArabicTxt]}>{cell}</Text>
-              </View>
-            ))}
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+      ))}
+    </View>
+  );
+
+  const dataRows = rows.map((row, ri) => (
+    <View key={ri} style={[s.tableDataRow, { borderTopColor: C.BORDER, width: needsScroll ? totalW : '100%' }, ri % 2 === 0 && { backgroundColor: C.BG + '88' }]}>
+      {row.map((cell, ci) => (
+        <View key={ci} style={[s.tableDataCell, { width: cellW, borderLeftColor: C.BORDER }]}>
+          <Text
+            style={arabicCols.includes(ci)
+              ? [s.tableArabicTxt, { color: C.TEXT }]
+              : [s.tableDataTxt, { color: C.TEXT_S }]}
+            numberOfLines={3}
+          >{cell}</Text>
+        </View>
+      ))}
+    </View>
+  ));
+
+  if (needsScroll) {
+    return (
+      <ScrollView horizontal showsHorizontalScrollIndicator={true} style={s.tableScroll} contentContainerStyle={{ flexDirection: 'column' }}>
+        <View style={{ width: totalW }}>
+          {headerRow}
+          {dataRows}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <View style={[s.tableScroll, { width: '100%' }]}>
+      {headerRow}
+      {dataRows}
+    </View>
   );
 }
 
 function AyahBox({ arabic, urdu, cite, breakdown }) {
+  const { colors: C } = useTheme();
   return (
-    <View style={s.ayahBox}>
-      <View style={s.ayahGlow} />
+    <View style={[s.ayahBox, { backgroundColor: C.EMERALD + '25', borderColor: C.GOLD + '25' }]}>
+      <View style={[s.ayahGlow, { backgroundColor: C.GOLD + '10' }]} />
       {cite ? (
-        <View style={s.ayahRefBadge}>
-          <Text style={s.ayahRefTxt}>{cite}</Text>
+        <View style={[s.ayahRefBadge, { backgroundColor: C.GOLD + '20' }]}>
+          <Text style={[s.ayahRefTxt, { color: C.GOLD }]}>{cite}</Text>
         </View>
       ) : null}
-      <Text style={s.ayahArabic}>{arabic}</Text>
-      <View style={s.ayahDivider} />
-      <Text style={s.ayahUrdu}>{urdu}</Text>
+      <Text style={[s.ayahArabic, { color: C.TEXT }]}>{arabic}</Text>
+      <View style={[s.ayahDivider, { backgroundColor: C.GOLD + '30' }]} />
+      <Text style={[s.ayahUrdu, { color: C.TEXT_S }]}>{urdu}</Text>
       {breakdown ? (
-        <View style={s.breakdownBox}>
-          <Text style={s.breakdownTxt}>{breakdown}</Text>
+        <View style={[s.breakdownBox, { backgroundColor: C.BG + 'AA' }]}>
+          <Text style={[s.breakdownTxt, { color: C.EMERALD_L }]}>{breakdown}</Text>
         </View>
       ) : null}
     </View>
@@ -748,14 +779,15 @@ function AyahBox({ arabic, urdu, cite, breakdown }) {
 }
 
 function LessonModal({ lesson, chapter, visible, onClose }) {
+  const { colors: C } = useTheme();
   if (!lesson) return null;
   const tagColor = lesson.tag === ISM ? ISM : lesson.tag === FIL ? FIL : lesson.tag === HARF ? HARF : null;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={s.modalOverlay}>
-        <View style={s.modalSheet}>
-          <View style={s.modalHandle} />
+        <View style={[s.modalSheet, { backgroundColor: C.CARD2 }]}>
+          <View style={[s.modalHandle, { backgroundColor: C.BORDER }]} />
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.modalScroll}>
             {/* Chapter badge + title */}
@@ -773,31 +805,31 @@ function LessonModal({ lesson, chapter, visible, onClose }) {
               )}
             </View>
 
-            <Text style={s.modalArabic}>{lesson.arabic}</Text>
-            <Text style={s.modalTitle}>{lesson.title}</Text>
-            <Text style={s.modalTitleEn}>{lesson.titleEn}</Text>
+            <Text style={[s.modalArabic, { color: C.GOLD_L }]}>{lesson.arabic}</Text>
+            <Text style={[s.modalTitle, { color: C.TEXT }]}>{lesson.title}</Text>
+            <Text style={[s.modalTitleEn, { color: C.TEXT_S }]}>{lesson.titleEn}</Text>
 
             {/* Level badge */}
             <View style={s.levelBadgeRow}>
-              <View style={[s.levelBadge, { backgroundColor: lesson.level === 'ابتدائی' ? EMERALD + '50' : lesson.level === 'درمیانہ' ? GOLD + '30' : FIL + '30' }]}>
-                <Text style={[s.levelTxt, { color: lesson.level === 'ابتدائی' ? EMERALD_L : lesson.level === 'درمیانہ' ? GOLD_L : FIL }]}>{lesson.level}</Text>
+              <View style={[s.levelBadge, { backgroundColor: lesson.level === 'ابتدائی' ? C.EMERALD + '50' : lesson.level === 'درمیانہ' ? C.GOLD + '30' : FIL + '30' }]}>
+                <Text style={[s.levelTxt, { color: lesson.level === 'ابتدائی' ? C.EMERALD_L : lesson.level === 'درمیانہ' ? C.GOLD_L : FIL }]}>{lesson.level}</Text>
               </View>
             </View>
 
             {/* Divider */}
-            <View style={s.modalDivider} />
+            <View style={[s.modalDivider, { backgroundColor: C.BORDER }]} />
 
             {/* Intro */}
             {!!lesson.intro && (
-              <Text style={s.introText}>{lesson.intro}</Text>
+              <Text style={[s.introText, { color: C.TEXT }]}>{lesson.intro}</Text>
             )}
 
             {/* Key points */}
             {lesson.points.map((pt, idx) => (
-              <View key={idx} style={[s.pointBox, { borderRightColor: pt.color || (tagColor || GOLD) }]}>
-                <Text style={[s.pointTitle, { color: pt.color || GOLD_L }]}>{pt.title}</Text>
-                {pt.arabic ? <Text style={s.pointArabic}>{pt.arabic}</Text> : null}
-                <Text style={s.pointUrdu}>{pt.urdu}</Text>
+              <View key={idx} style={[s.pointBox, { backgroundColor: C.CARD, borderColor: C.BORDER, borderRightColor: pt.color || (tagColor || C.GOLD) }]}>
+                <Text style={[s.pointTitle, { color: pt.color || C.GOLD_L }]}>{pt.title}</Text>
+                {pt.arabic ? <Text style={[s.pointArabic, { color: C.GOLD_L }]}>{pt.arabic}</Text> : null}
+                <Text style={[s.pointUrdu, { color: C.TEXT_S }]}>{pt.urdu}</Text>
               </View>
             ))}
 
@@ -805,8 +837,8 @@ function LessonModal({ lesson, chapter, visible, onClose }) {
             {lesson.table && (
               <View style={s.tableWrap}>
                 <View style={s.tableLabelRow}>
-                  <Feather name="grid" size={12} color={TEXT_S} />
-                  <Text style={s.tableLabel}>جدول</Text>
+                  <Feather name="grid" size={12} color={C.TEXT_S} />
+                  <Text style={[s.tableLabel, { color: C.TEXT_S }]}>جدول</Text>
                 </View>
                 <GrammarTable headers={lesson.table.headers} rows={lesson.table.rows} arabicCols={lesson.table.arabicCols} />
               </View>
@@ -816,8 +848,8 @@ function LessonModal({ lesson, chapter, visible, onClose }) {
             {lesson.examples.length > 0 && (
               <View style={s.examplesWrap}>
                 <View style={s.examplesLabelRow}>
-                  <Feather name="star" size={12} color={GOLD} />
-                  <Text style={s.examplesLabel}>قرآنی مثالیں</Text>
+                  <Feather name="star" size={12} color={C.GOLD} />
+                  <Text style={[s.examplesLabel, { color: C.GOLD }]}>قرآنی مثالیں</Text>
                 </View>
                 {lesson.examples.map((ex, i) => (
                   <AyahBox
@@ -832,9 +864,9 @@ function LessonModal({ lesson, chapter, visible, onClose }) {
             )}
 
             {/* Close button */}
-            <TouchableOpacity style={s.closeBtn} onPress={onClose} activeOpacity={0.8}>
-              <Feather name="check-circle" size={16} color={BG} />
-              <Text style={s.closeBtnTxt}>سبق مکمل کریں</Text>
+            <TouchableOpacity style={[s.closeBtn, { backgroundColor: C.GOLD }]} onPress={onClose} activeOpacity={0.8}>
+              <Feather name="check-circle" size={16} color={C.BG} />
+              <Text style={[s.closeBtnTxt, { color: C.BG }]}>سبق مکمل کریں</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -844,11 +876,12 @@ function LessonModal({ lesson, chapter, visible, onClose }) {
 }
 
 function LessonCard({ lesson, chapter, index, onPress }) {
+  const { colors: C } = useTheme();
   const tagColor = lesson.tag === ISM ? ISM : lesson.tag === FIL ? FIL : lesson.tag === HARF ? HARF : chapter.color;
   const levelColor = lesson.level === 'ابتدائی' ? EMERALD_L : lesson.level === 'درمیانہ' ? GOLD : FIL;
 
   return (
-    <TouchableOpacity style={s.lessonCard} onPress={() => onPress(lesson)} activeOpacity={0.8}>
+    <TouchableOpacity style={[s.lessonCard, { backgroundColor: C.CARD, borderColor: C.BORDER }]} onPress={() => onPress(lesson)} activeOpacity={0.8}>
       {/* Left accent bar */}
       <View style={[s.lessonAccent, { backgroundColor: tagColor }]} />
 
@@ -859,9 +892,9 @@ function LessonCard({ lesson, chapter, index, onPress }) {
 
       {/* Content */}
       <View style={s.lessonContent}>
-        <Text style={s.lessonArabic}>{lesson.arabic}</Text>
-        <Text style={s.lessonTitle}>{lesson.title}</Text>
-        <Text style={s.lessonTitleEn}>{lesson.titleEn}</Text>
+        <Text style={[s.lessonArabic, { color: C.GOLD_L }]}>{lesson.arabic}</Text>
+        <Text style={[s.lessonTitle, { color: C.TEXT }]}>{lesson.title}</Text>
+        <Text style={[s.lessonTitleEn, { color: C.TEXT_S }]}>{lesson.titleEn}</Text>
       </View>
 
       {/* Right: level + arrow */}
@@ -869,8 +902,8 @@ function LessonCard({ lesson, chapter, index, onPress }) {
         <View style={[s.lessonLevelBadge, { backgroundColor: levelColor + '20' }]}>
           <Text style={[s.lessonLevelTxt, { color: levelColor }]}>{lesson.level}</Text>
         </View>
-        {lesson.table && <Feather name="grid" size={11} color={TEXT_S} style={{ marginTop: 6 }} />}
-        <Feather name="chevron-left" size={16} color={TEXT_S} style={{ marginTop: 4 }} />
+        {lesson.table && <Feather name="grid" size={11} color={C.TEXT_S} style={{ marginTop: 6 }} />}
+        <Feather name="chevron-left" size={16} color={C.TEXT_S} style={{ marginTop: 4 }} />
       </View>
     </TouchableOpacity>
   );
@@ -880,6 +913,7 @@ function LessonCard({ lesson, chapter, index, onPress }) {
    MAIN SCREEN
 ───────────────────────────────────────────────────────────────── */
 export default function GrammarLearningScreen({ navigation }) {
+  const { colors: C } = useTheme();
   const [activeChIdx, setActiveChIdx] = useState(0);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -896,26 +930,26 @@ export default function GrammarLearningScreen({ navigation }) {
   const totalLessons = CHAPTERS.reduce((acc, ch) => acc + ch.lessons.length, 0);
 
   return (
-    <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+    <View style={[s.root, { backgroundColor: C.BG }]}>
+      <StatusBar barStyle={C.statusBar} backgroundColor={C.BG} />
 
       {/* ── Header ── */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.iconBtn}>
-          <Feather name="arrow-left" size={20} color={GOLD} />
+      <View style={[s.header, { backgroundColor: C.BG, borderBottomColor: C.BORDER }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[s.iconBtn, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
+          <Feather name="arrow-left" size={20} color={C.GOLD} />
         </TouchableOpacity>
         <View style={s.headerCenter}>
-          <Text style={s.headerTitle}>عربی گرامر</Text>
-          <Text style={s.headerSub}>Arabic Grammar Learning</Text>
+          <Text style={[s.headerTitle, { color: C.TEXT }]}>عربی گرامر</Text>
+          <Text style={[s.headerSub, { color: C.TEXT_S }]}>Arabic Grammar Learning</Text>
         </View>
-        <View style={[s.iconBtn, s.statsBox]}>
-          <Text style={s.statsTxt}>{totalLessons}</Text>
-          <Text style={s.statsLabel}>سبق</Text>
+        <View style={[s.iconBtn, s.statsBox, { backgroundColor: C.CARD, borderColor: C.BORDER }]}>
+          <Text style={[s.statsTxt, { color: C.GOLD }]}>{totalLessons}</Text>
+          <Text style={[s.statsLabel, { color: C.TEXT_S }]}>سبق</Text>
         </View>
       </View>
 
       {/* ── Chapter Tabs ── */}
-      <View style={s.tabsWrapper}>
+      <View style={[s.tabsWrapper, { borderBottomColor: C.BORDER }]}>
         <ScrollView
           ref={tabsScrollRef}
           horizontal
@@ -929,24 +963,24 @@ export default function GrammarLearningScreen({ navigation }) {
             return (
               <TouchableOpacity
                 key={ch.id}
-                style={[s.chTab, active && { backgroundColor: ch.color + '20', borderColor: ch.color }]}
+                style={[s.chTab, { backgroundColor: C.CARD, borderColor: C.BORDER }, active && { backgroundColor: ch.color + '20', borderColor: ch.color }]}
                 onPress={() => setActiveChIdx(i)}
                 activeOpacity={0.8}
               >
-                <Feather name={ch.icon} size={14} color={active ? ch.color : TEXT_S} />
-                <Text style={[s.chTabTitle, active && { color: ch.color }]} numberOfLines={1}>{ch.title}</Text>
-                <Text style={s.chTabCount}>{ch.lessons.length}</Text>
+                <Feather name={ch.icon} size={14} color={active ? ch.color : C.TEXT_S} />
+                <Text style={[s.chTabTitle, { color: C.TEXT_S }, active && { color: ch.color }]} numberOfLines={1}>{ch.title}</Text>
+                <Text style={[s.chTabCount, { color: C.TEXT_S, backgroundColor: C.CARD2 }]}>{ch.lessons.length}</Text>
               </TouchableOpacity>
             );
           })}
           <View style={{ width: 8 }} />
         </ScrollView>
 
-        {/* Right fade + chevron — tappable to scroll right */}
+        {/* Right fade + chevron */}
         <View style={s.tabsFadeRight}>
           <View style={s.tabsFadeTransparent} pointerEvents="none" />
           <TouchableOpacity
-            style={s.tabsFadeSolid}
+            style={[s.tabsFadeSolid, { backgroundColor: C.BG }]}
             onPress={() => {
               tabsScrollRef.current?.scrollTo({
                 x: tabScrollX.current + 150,
@@ -955,24 +989,24 @@ export default function GrammarLearningScreen({ navigation }) {
             }}
             activeOpacity={0.7}
           >
-            <Feather name="chevron-right" size={15} color={TEXT_S} style={{ opacity: 0.9 }} />
+            <Feather name="chevron-right" size={15} color={C.TEXT_S} style={{ opacity: 0.9 }} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* ── Chapter header card ── */}
-      <View style={[s.chapterCard, { borderColor: activeChapter.color + '40' }]}>
+      <View style={[s.chapterCard, { backgroundColor: C.CARD, borderColor: activeChapter.color + '40' }]}>
         <View style={[s.chapterIconBox, { backgroundColor: activeChapter.color + '18' }]}>
           <Feather name={activeChapter.icon} size={22} color={activeChapter.color} />
         </View>
         <View style={s.chapterInfo}>
           <Text style={[s.chapterTitle, { color: activeChapter.color }]}>{activeChapter.title}</Text>
-          <Text style={s.chapterTitleEn}>{activeChapter.titleEn}</Text>
-          <Text style={s.chapterDesc}>{activeChapter.desc}</Text>
+          <Text style={[s.chapterTitleEn, { color: C.TEXT_S }]}>{activeChapter.titleEn}</Text>
+          <Text style={[s.chapterDesc, { color: C.TEXT_S }]}>{activeChapter.desc}</Text>
         </View>
         <View style={[s.chapterCountBox, { backgroundColor: activeChapter.color + '15' }]}>
           <Text style={[s.chapterCountNum, { color: activeChapter.color }]}>{activeChapter.lessons.length}</Text>
-          <Text style={s.chapterCountLabel}>سبق</Text>
+          <Text style={[s.chapterCountLabel, { color: C.TEXT_S }]}>سبق</Text>
         </View>
       </View>
 
@@ -1024,11 +1058,11 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   headerCenter: { flex: 1 },
-  headerTitle: { fontSize: 18, color: TEXT, fontWeight: '700' },
-  headerSub:   { fontSize: 11, color: TEXT_S, marginTop: 1 },
+  headerTitle: { fontSize: 20, color: TEXT, fontWeight: '700' },
+  headerSub:   { fontSize: 13, color: TEXT_S, marginTop: 1 },
   statsBox: { flexDirection: 'column', gap: 0 },
-  statsTxt:    { fontSize: 16, color: GOLD, fontWeight: '700', textAlign: 'center' },
-  statsLabel:  { fontSize: 9, color: TEXT_S, textAlign: 'center' },
+  statsTxt:    { fontSize: 18, color: GOLD, fontWeight: '700', textAlign: 'center' },
+  statsLabel:  { fontSize: 11, color: TEXT_S, textAlign: 'center' },
 
   /* Chapter tabs */
   tabsWrapper: {
@@ -1054,9 +1088,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 13, height: 36, borderRadius: 20,
     backgroundColor: CARD, borderWidth: 1, borderColor: BORDER,
   },
-  chTabTitle: { fontSize: 15, color: TEXT_S, fontWeight: '600', lineHeight: 36, includeFontPadding: false, textAlignVertical: 'center' },
+  chTabTitle: { fontSize: 16, color: TEXT_S, fontWeight: '600', lineHeight: 36, includeFontPadding: false, textAlignVertical: 'center' },
   chTabCount: {
-    fontSize: 10, color: TEXT_S,
+    fontSize: 12, color: TEXT_S,
     backgroundColor: CARD2, borderRadius: 10,
     paddingHorizontal: 5, paddingVertical: 1,
   },
@@ -1073,12 +1107,12 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   chapterInfo:     { flex: 1 },
-  chapterTitle:    { fontSize: 18, fontWeight: '700' },
-  chapterTitleEn:  { fontSize: 12, color: TEXT_S, marginTop: 1 },
-  chapterDesc:     { fontSize: 11, color: TEXT_S, marginTop: 4, lineHeight: 17 },
+  chapterTitle:    { fontSize: 20, fontWeight: '700' },
+  chapterTitleEn:  { fontSize: 14, color: TEXT_S, marginTop: 1 },
+  chapterDesc:     { fontSize: 13, color: TEXT_S, marginTop: 4, lineHeight: 21 },
   chapterCountBox: { alignItems: 'center', borderRadius: 12, padding: 10, minWidth: 44 },
-  chapterCountNum: { fontSize: 22, fontWeight: '700' },
-  chapterCountLabel: { fontSize: 9, color: TEXT_S },
+  chapterCountNum: { fontSize: 24, fontWeight: '700' },
+  chapterCountLabel: { fontSize: 11, color: TEXT_S },
 
   /* Lesson list */
   listPad: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 60 },
@@ -1092,14 +1126,14 @@ const s = StyleSheet.create({
   },
   lessonAccent:   { width: 4, alignSelf: 'stretch' },
   lessonNumBox:   { width: 40, height: 40, borderRadius: 12, margin: 12, alignItems: 'center', justifyContent: 'center' },
-  lessonNum:      { fontSize: 14, fontWeight: '700' },
+  lessonNum:      { fontSize: 16, fontWeight: '700' },
   lessonContent:  { flex: 1, paddingVertical: 14 },
-  lessonArabic:   { fontSize: 17, color: GOLD_L, textAlign: 'right', paddingRight: 4 },
-  lessonTitle:    { fontSize: 14, color: TEXT, fontWeight: '600', textAlign: 'right', marginTop: 3 },
-  lessonTitleEn:  { fontSize: 11, color: TEXT_S, textAlign: 'right', marginTop: 1 },
+  lessonArabic:   { fontSize: 20, color: GOLD_L, textAlign: 'right', paddingRight: 4 },
+  lessonTitle:    { fontSize: 16, color: TEXT, fontWeight: '600', textAlign: 'right', marginTop: 3 },
+  lessonTitleEn:  { fontSize: 13, color: TEXT_S, textAlign: 'right', marginTop: 1 },
   lessonRight:    { alignItems: 'center', paddingRight: 14, paddingLeft: 6, gap: 2 },
   lessonLevelBadge: { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
-  lessonLevelTxt: { fontSize: 9, fontWeight: '600' },
+  lessonLevelTxt: { fontSize: 11, fontWeight: '600' },
 
   /* Modal */
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
@@ -1116,23 +1150,23 @@ const s = StyleSheet.create({
 
   modalTitleRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16, marginTop: 8 },
   chapterBadge:    { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
-  chapterBadgeTxt: { fontSize: 11, fontWeight: '600' },
+  chapterBadgeTxt: { fontSize: 13, fontWeight: '600' },
   wordTypeBadge:   { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  wordTypeTxt:     { fontSize: 11, fontWeight: '700' },
+  wordTypeTxt:     { fontSize: 13, fontWeight: '700' },
 
-  modalArabic:  { fontSize: 28, color: GOLD_L, textAlign: 'center', lineHeight: 48 },
-  modalTitle:   { fontSize: 18, color: TEXT, fontWeight: '700', textAlign: 'center', marginTop: 4 },
-  modalTitleEn: { fontSize: 12, color: TEXT_S, textAlign: 'center', marginTop: 2 },
+  modalArabic:  { fontSize: 32, color: GOLD_L, textAlign: 'center', lineHeight: 54 },
+  modalTitle:   { fontSize: 20, color: TEXT, fontWeight: '700', textAlign: 'center', marginTop: 4 },
+  modalTitleEn: { fontSize: 14, color: TEXT_S, textAlign: 'center', marginTop: 2 },
 
   levelBadgeRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 10 },
   levelBadge:    { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 },
-  levelTxt:      { fontSize: 12, fontWeight: '600' },
+  levelTxt:      { fontSize: 14, fontWeight: '600' },
 
   modalDivider: { height: 1, backgroundColor: BORDER, marginVertical: 18 },
 
   introText: {
-    fontSize: 14, color: TEXT,
-    textAlign: 'right', lineHeight: 26, marginBottom: 14,
+    fontSize: 16, color: TEXT,
+    textAlign: 'right', lineHeight: 30, marginBottom: 14,
   },
 
   /* Key point boxes */
@@ -1143,28 +1177,28 @@ const s = StyleSheet.create({
     paddingVertical: 12, paddingHorizontal: 14,
     marginBottom: 10,
   },
-  pointTitle:  { fontSize: 14, fontWeight: '700', textAlign: 'right', marginBottom: 5 },
-  pointArabic: { fontSize: 18, color: GOLD_L, textAlign: 'right', lineHeight: 36, marginBottom: 4 },
-  pointUrdu:   { fontSize: 13, color: TEXT_S, textAlign: 'right', lineHeight: 22 },
+  pointTitle:  { fontSize: 16, fontWeight: '700', textAlign: 'right', marginBottom: 5 },
+  pointArabic: { fontSize: 22, color: GOLD_L, textAlign: 'right', lineHeight: 40, marginBottom: 4 },
+  pointUrdu:   { fontSize: 15, color: TEXT_S, textAlign: 'right', lineHeight: 26 },
 
   /* Table */
   tableWrap: { marginTop: 8, marginBottom: 16 },
   tableLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  tableLabel: { fontSize: 12, color: TEXT_S },
-  tableScroll: { borderRadius: 14, overflow: 'hidden' },
+  tableLabel: { fontSize: 14, color: TEXT_S },
+  tableScroll: { borderRadius: 14, overflow: 'hidden', width: '100%' },
   tableHeaderRow: { flexDirection: 'row-reverse', backgroundColor: GOLD + '25' },
-  tableHeaderCell: { paddingHorizontal: 14, paddingVertical: 10, minWidth: 90, borderLeftWidth: 1, borderLeftColor: BORDER, alignItems: 'flex-end' },
-  tableHeaderTxt: { fontSize: 12, color: GOLD_L, fontWeight: '700', textAlign: 'right' },
+  tableHeaderCell: { paddingHorizontal: 10, paddingVertical: 10, minWidth: 80, borderLeftWidth: 1, borderLeftColor: BORDER, alignItems: 'flex-end', flexShrink: 1 },
+  tableHeaderTxt: { fontSize: 13, color: GOLD_L, fontWeight: '700', textAlign: 'right', flexShrink: 1 },
   tableDataRow:   { flexDirection: 'row-reverse', borderTopWidth: 1, borderTopColor: BORDER },
   tableRowAlt:    { backgroundColor: BG + '88' },
-  tableDataCell:  { paddingHorizontal: 14, paddingVertical: 10, minWidth: 90, borderLeftWidth: 1, borderLeftColor: BORDER, justifyContent: 'center', alignItems: 'flex-end' },
-  tableDataTxt:   { fontSize: 12, color: TEXT_S, textAlign: 'right' },
-  tableArabicTxt: { fontSize: 15, color: TEXT, textAlign: 'right' },
+  tableDataCell:  { paddingHorizontal: 10, paddingVertical: 10, minWidth: 80, borderLeftWidth: 1, borderLeftColor: BORDER, justifyContent: 'center', alignItems: 'flex-end', flexShrink: 1 },
+  tableDataTxt:   { fontSize: 13, color: TEXT_S, textAlign: 'right', flexShrink: 1 },
+  tableArabicTxt: { fontSize: 17, color: TEXT, textAlign: 'right', flexShrink: 1 },
 
   /* Quranic examples */
   examplesWrap:     { marginTop: 4, marginBottom: 10 },
   examplesLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-  examplesLabel:    { fontSize: 12, color: GOLD },
+  examplesLabel:    { fontSize: 14, color: GOLD },
 
   ayahBox: {
     backgroundColor: EMERALD + '25',
@@ -1182,15 +1216,15 @@ const s = StyleSheet.create({
     backgroundColor: GOLD + '20', borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 3, marginBottom: 10,
   },
-  ayahRefTxt:  { fontSize: 10, color: GOLD, textAlign: 'center' },
-  ayahArabic:  { fontSize: 20, color: TEXT, textAlign: 'center', lineHeight: 40, marginBottom: 8 },
+  ayahRefTxt:  { fontSize: 12, color: GOLD, textAlign: 'center' },
+  ayahArabic:  { fontSize: 24, color: TEXT, textAlign: 'center', lineHeight: 46, marginBottom: 8 },
   ayahDivider: { height: 0.7, backgroundColor: GOLD + '30', marginBottom: 8 },
-  ayahUrdu:    { fontSize: 13, color: TEXT_S, textAlign: 'center', lineHeight: 22 },
+  ayahUrdu:    { fontSize: 15, color: TEXT_S, textAlign: 'center', lineHeight: 26 },
   breakdownBox: {
     backgroundColor: BG + 'AA', borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 8, marginTop: 10,
   },
-  breakdownTxt: { fontSize: 11, color: EMERALD_L, textAlign: 'center', lineHeight: 20 },
+  breakdownTxt: { fontSize: 13, color: EMERALD_L, textAlign: 'center', lineHeight: 22 },
 
   /* Close button */
   closeBtn: {
@@ -1198,5 +1232,5 @@ const s = StyleSheet.create({
     backgroundColor: GOLD, borderRadius: 16,
     paddingVertical: 14, marginTop: 20,
   },
-  closeBtnTxt: { fontSize: 15, color: BG, fontWeight: '700' },
+  closeBtnTxt: { fontSize: 17, color: BG, fontWeight: '700' },
 });
